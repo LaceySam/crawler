@@ -32,7 +32,7 @@ class Crawler(object):
         parsed_url = urlparse.urlparse(url)
         self.netloc = parsed_url[1]
 
-    def filter_links(self, hits):
+    def filter_links(self, hits, enforce_slash=False):
         links = []
 
         for hit in hits:
@@ -44,6 +44,11 @@ class Crawler(object):
             # Don't bother with / or ''
             if path == '/' or path == '':
                 continue
+
+            if enforce_slash:
+                # Avoid duplicated by assuming page/ == page
+                if not path.endswith('/'):
+                    path += '/'
 
             # Don't bother with dups
             if path in links:
@@ -95,7 +100,7 @@ class Crawler(object):
         # And all static assets
         asset_matches = re.findall('src="?\'?([^"\'>]*)', response.text)
 
-        links = self.filter_links(link_matches)
+        links = self.filter_links(link_matches, enforce_slash=True)
         assets = self.filter_links(asset_matches)
 
         links, new_assets = self.pop_assets_from_links(links)
