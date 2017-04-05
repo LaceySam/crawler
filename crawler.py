@@ -136,7 +136,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--url',
         required=True,
-        help='URL to scrape, eg. https://aimbrain.com'
+        help='URL to scrape, eg. https://example.com'
     )
     args = parser.parse_args()
 
