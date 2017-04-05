@@ -128,7 +128,7 @@ class Crawler(object):
         self.urls[url] = {'links': links, 'static': static}
 
     def output(self):
-        print json.dumps(self.urls)
+        return self.urls
 
 
 if __name__ == '__main__':
@@ -142,4 +142,4 @@ if __name__ == '__main__':
 
     crawler = Crawler(args.url)
     crawler.crawl(args.url)
-    crawler.output()
+    print json.dumps(crawler.output())
