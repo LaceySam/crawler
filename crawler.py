@@ -21,7 +21,14 @@ logger.setLevel(logging.INFO)
 
 class Crawler(object):
 
-    # Of the form: {'url' : {'static': ['x', 'y'], 'links': ['a','b']}}
+    # Of the form:
+    #{
+    #    'url' : {
+    #        'static': ['x', 'y'],
+    #        'links': ['a','b']
+    #    },
+    #    'status': 'alive'
+    #}
     urls = {}
 
     # If we want to use this on a really big website, will need to use a bloom
@@ -44,11 +51,6 @@ class Crawler(object):
             # Don't bother with / or ''
             if path == '/' or path == '':
                 continue
-
-            if enforce_slash:
-                # Avoid duplicated by assuming page/ == page
-                if not path.endswith('/'):
-                    path += '/'
 
             # Don't bother with dups
             if path in links:
@@ -84,37 +86,45 @@ class Crawler(object):
             response = requests.get(url)
         except ConnectionError:
             logger.info('Connection error for %s', url)
-            return [], []
+            return [], [], 'dead'
 
-        if 200 > response > 300:
+        if response.status_code < 200 or response.status_code > 300:
             logger.info(
                 'Non 2xx recieved on: %s, %d',
                 url,
                 response.status_code
             )
-            return [], []
+            return [], [], 'dead'
 
         # Find all urls
-        link_matches = re.findall('href="?\'?([^"\'>]*)', response.text)
+        link_matches = re.findall(' href="?\'?([^"\'>]*)', response.text)
 
         # And all static assets
-        asset_matches = re.findall('src="?\'?([^"\'>]*)', response.text)
+        asset_matches = re.findall(' src="?\'?([^"\'>]*)', response.text)
 
         links = self.filter_links(link_matches, enforce_slash=True)
         assets = self.filter_links(asset_matches)
 
         links, new_assets = self.pop_assets_from_links(links)
 
+        # Avoid duplicated by assuming page/ == page
+        slashed_links = []
+        for link in links:
+            if not link.endswith('/'):
+                link += '/'
+
+            slashed_links.append(link)
+
         for asset in new_assets:
             if asset not in assets:
                 assets.append(asset)
 
-        return links, assets
+        return slashed_links, assets, 'alive'
 
     def crawl(self, url):
         self.urls_bf.add(url)
 
-        links, static = self.scrape_page(url)
+        links, static, status = self.scrape_page(url)
         for link in links:
             url_to_crawl = urlparse.urlunparse((
                 'http', self.netloc, link, '', '', ''
@@ -125,7 +135,7 @@ class Crawler(object):
 
             self.crawl(url_to_crawl)
 
-        self.urls[url] = {'links': links, 'static': static}
+        self.urls[url] = {'links': links, 'static': static, 'status': status}
 
     def output(self):
         return self.urls
@@ -138,8 +148,24 @@ if __name__ == '__main__':
         required=True,
         help='URL to scrape, eg. https://example.com'
     )
+
+    parser.add_argument(
+        '--dump-to',
+        help='File to dump site map to',
+        default='/tmp/site-map.json',
+    )
     args = parser.parse_args()
 
     crawler = Crawler(args.url)
     crawler.crawl(args.url)
-    print json.dumps(crawler.output())
+
+    site_map = json.dumps(
+        crawler.output(),
+        sort_keys=True,
+        indent=4,
+        separators=(',', ': '),
+    )
+
+    f = open(args.dump_to, 'w')
+    print >>f, site_map
+    f.close()
