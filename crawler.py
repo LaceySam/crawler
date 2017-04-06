@@ -22,13 +22,13 @@ logger.setLevel(logging.INFO)
 class Crawler(object):
 
     # Of the form:
-    #{
-    #    'url' : {
-    #        'static': ['x', 'y'],
-    #        'links': ['a','b']
-    #    },
-    #    'status': 'alive'
-    #}
+    # {
+    #     'url' : {
+    #         'static': ['x', 'y'],
+    #         'links': ['a','b']
+    #     },
+    #     'status': 'alive'
+    # }
     urls = {}
 
     # If we want to use this on a really big website, will need to use a bloom
